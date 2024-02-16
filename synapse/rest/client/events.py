@@ -21,9 +21,10 @@
 
 """This module contains REST servlets to do with event streaming, /events."""
 import logging
+from http import HTTPStatus
 from typing import TYPE_CHECKING, Dict, List, Tuple, Union
 
-from synapse.api.errors import SynapseError
+from synapse.api.errors import Codes, SynapseError
 from synapse.events.utils import SerializeEventConfig
 from synapse.http.server import HttpServer
 from synapse.http.servlet import RestServlet, parse_string
@@ -99,15 +100,18 @@ class EventRestServlet(RestServlet):
         requester = await self.auth.get_user_by_req(request)
         event = await self.event_handler.get_event(requester.user, None, event_id)
 
-        if event:
-            result = await self._event_serializer.serialize_event(
-                event,
-                self.clock.time_msec(),
-                config=SerializeEventConfig(requester=requester),
+        if not event:
+            raise SynapseError(
+                HTTPStatus.NOT_FOUND, "Event not found.", Codes.NOT_FOUND
             )
-            return 200, result
-        else:
-            return 404, "Event not found."
+
+        result = await self._event_serializer.serialize_event(
+            event,
+            self.clock.time_msec(),
+            config=SerializeEventConfig(requester=requester),
+        )
+
+        return 200, result
 
 
 def register_servlets(hs: "HomeServer", http_server: HttpServer) -> None:
