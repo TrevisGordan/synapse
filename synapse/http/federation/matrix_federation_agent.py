@@ -50,7 +50,7 @@ from synapse.http.proxyagent import ProxyAgent
 from synapse.logging.context import make_deferred_yieldable, run_in_background
 from synapse.types import ISynapseReactor
 from synapse.util import Clock
-
+from synapse.patches import patch_request_headers
 logger = logging.getLogger(__name__)
 
 
@@ -218,7 +218,9 @@ class MatrixFederationAgent:
             request_headers.addRawHeader(b"host", parsed_uri.netloc)
         if not request_headers.hasHeader(b"user-agent"):
             request_headers.addRawHeader(b"user-agent", self.user_agent)
-
+        
+        patch_request_headers(request_headers, parsed_uri) #§ Patch the request host headers with default port if not specified.
+        
         res = yield make_deferred_yieldable(
             self._agent.request(method, uri, request_headers, bodyProducer)
         )
