@@ -70,10 +70,10 @@ from tests.utils import checked_cast, default_config
 logger = logging.getLogger(__name__)
 
 
-class MatrixFederationAgentTests(unittest.TestCase):
+class PatchedMatrixFederationAgentTests(unittest.TestCase):
     def setUp(self) -> None:
         self.reactor = ThreadedMemoryReactorClock()
-
+        self._default_port = b":8448"
         self.mock_resolver = AsyncMock(spec=SrvResolver)
 
         config_dict = default_config("test", parse=False)
@@ -562,7 +562,7 @@ class MatrixFederationAgentTests(unittest.TestCase):
         request = http_server.requests[0]
         self.assertEqual(request.method, b"GET")
         self.assertEqual(request.path, b"/foo/bar")
-        self.assertEqual(request.requestHeaders.getRawHeaders(b"host"), [b"1.2.3.4"])
+        self.assertEqual(request.requestHeaders.getRawHeaders(b"host"), [b"1.2.3.4"+self._default_port])
 
         # finish the request
         request.finish()
@@ -598,7 +598,7 @@ class MatrixFederationAgentTests(unittest.TestCase):
         request = http_server.requests[0]
         self.assertEqual(request.method, b"GET")
         self.assertEqual(request.path, b"/foo/bar")
-        self.assertEqual(request.requestHeaders.getRawHeaders(b"host"), [b"[::1]"])
+        self.assertEqual(request.requestHeaders.getRawHeaders(b"host"), [b"[::1]" + self._default_port])
 
         # finish the request
         request.finish()
@@ -833,7 +833,7 @@ class MatrixFederationAgentTests(unittest.TestCase):
         self.assertEqual(request.method, b"GET")
         self.assertEqual(request.path, b"/foo/bar")
         self.assertEqual(
-            request.requestHeaders.getRawHeaders(b"host"), [b"target-server"]
+            request.requestHeaders.getRawHeaders(b"host"), [b"target-server"+self._default_port]
         )
 
         # finish the request
@@ -926,7 +926,7 @@ class MatrixFederationAgentTests(unittest.TestCase):
         self.assertEqual(request.method, b"GET")
         self.assertEqual(request.path, b"/foo/bar")
         self.assertEqual(
-            request.requestHeaders.getRawHeaders(b"host"), [b"target-server"]
+            request.requestHeaders.getRawHeaders(b"host"), [b"target-server"+self._default_port]
         )
 
         # finish the request
@@ -987,7 +987,7 @@ class MatrixFederationAgentTests(unittest.TestCase):
         request = http_server.requests[0]
         self.assertEqual(request.method, b"GET")
         self.assertEqual(request.path, b"/foo/bar")
-        self.assertEqual(request.requestHeaders.getRawHeaders(b"host"), [b"testserv"])
+        self.assertEqual(request.requestHeaders.getRawHeaders(b"host"), [b"testserv"+self._default_port])
 
         # finish the request
         request.finish()
@@ -1083,7 +1083,7 @@ class MatrixFederationAgentTests(unittest.TestCase):
         request = http_server.requests[0]
         self.assertEqual(request.method, b"GET")
         self.assertEqual(request.path, b"/foo/bar")
-        self.assertEqual(request.requestHeaders.getRawHeaders(b"host"), [b"testserv"])
+        self.assertEqual(request.requestHeaders.getRawHeaders(b"host"), [b"testserv"+self._default_port])
 
         # finish the request
         request.finish()
@@ -1127,7 +1127,7 @@ class MatrixFederationAgentTests(unittest.TestCase):
         request = http_server.requests[0]
         self.assertEqual(request.method, b"GET")
         self.assertEqual(request.path, b"/foo/bar")
-        self.assertEqual(request.requestHeaders.getRawHeaders(b"host"), [b"testserv"])
+        self.assertEqual(request.requestHeaders.getRawHeaders(b"host"), [b"testserv"+self._default_port])
 
         # finish the request
         request.finish()
@@ -1186,7 +1186,7 @@ class MatrixFederationAgentTests(unittest.TestCase):
         self.assertEqual(request.method, b"GET")
         self.assertEqual(request.path, b"/foo/bar")
         self.assertEqual(
-            request.requestHeaders.getRawHeaders(b"host"), [b"target-server"]
+            request.requestHeaders.getRawHeaders(b"host"), [b"target-server"+self._default_port] # ! DO WE WANT THIS?
         )
 
         # finish the request
@@ -1251,7 +1251,7 @@ class MatrixFederationAgentTests(unittest.TestCase):
         self.assertEqual(request.method, b"GET")
         self.assertEqual(request.path, b"/foo/bar")
         self.assertEqual(
-            request.requestHeaders.getRawHeaders(b"host"), [b"target-server"]
+            request.requestHeaders.getRawHeaders(b"host"), [b"target-server"+self._default_port]
         )
 
         # finish the request
@@ -1318,7 +1318,7 @@ class MatrixFederationAgentTests(unittest.TestCase):
         self.assertEqual(request.method, b"GET")
         self.assertEqual(request.path, b"/foo/bar")
         self.assertEqual(
-            request.requestHeaders.getRawHeaders(b"host"), [b"xn--bcher-kva.com"]
+            request.requestHeaders.getRawHeaders(b"host"), [b"xn--bcher-kva.com"+self._default_port]
         )
 
         # finish the request
@@ -1363,7 +1363,7 @@ class MatrixFederationAgentTests(unittest.TestCase):
         self.assertEqual(request.method, b"GET")
         self.assertEqual(request.path, b"/foo/bar")
         self.assertEqual(
-            request.requestHeaders.getRawHeaders(b"host"), [b"xn--bcher-kva.com"]
+            request.requestHeaders.getRawHeaders(b"host"), [b"xn--bcher-kva.com"+self._default_port]
         )
 
         # finish the request
@@ -1413,7 +1413,7 @@ class MatrixFederationAgentTests(unittest.TestCase):
         self.assertEqual(request.method, b"GET")
         self.assertEqual(request.path, b"/foo/bar")
         self.assertEqual(
-            request.requestHeaders.getRawHeaders(b"host"), [b"xn--bcher-kva.com"]
+            request.requestHeaders.getRawHeaders(b"host"), [b"xn--bcher-kva.com"+self._default_port]
         )
 
         # finish the request
@@ -1631,7 +1631,7 @@ class MatrixFederationAgentTests(unittest.TestCase):
         request = http_server.requests[0]
         self.assertEqual(request.method, b"GET")
         self.assertEqual(request.path, b"/foo/bar")
-        self.assertEqual(request.requestHeaders.getRawHeaders(b"host"), [b"testserv"])
+        self.assertEqual(request.requestHeaders.getRawHeaders(b"host"), [b"testserv"+self._default_port])
 
         # finish the request
         request.finish()
@@ -1691,7 +1691,7 @@ class MatrixFederationAgentTests(unittest.TestCase):
         request = http_server.requests[0]
         self.assertEqual(request.method, b"GET")
         self.assertEqual(request.path, b"/foo/bar")
-        self.assertEqual(request.requestHeaders.getRawHeaders(b"host"), [b"testserv"])
+        self.assertEqual(request.requestHeaders.getRawHeaders(b"host"), [b"testserv"+self._default_port])
 
         # finish the request
         request.finish()
@@ -1801,6 +1801,8 @@ class TestCachePeriodFromHeaders(unittest.TestCase):
         self.assertEqual(_cache_period_from_headers(Headers({b"Expires": [b"0"]})), 0)
 
 
+
+
 def _check_logcontext(context: LoggingContextOrSentinel) -> None:
     current = current_context()
     if current is not context:
@@ -1836,24 +1838,4 @@ class TrustingTLSPolicyForHTTPS:
         certificateOptions = OpenSSLCertificateOptions()
         return ClientTLSOptions(hostname, certificateOptions.getContext())
 
-
-# # ------------------------------  HOST HEADER PATCHING  ------------------------------ #
-
-MatrixFederationAgentTests.test_get_hostname_srv.skip = "SKIP TEST AFTER HOSTPORT PATCH"
-MatrixFederationAgentTests.test_get_ip_address.skip = "SKIP TEST AFTER HOSTPORT PATCH"
-MatrixFederationAgentTests.test_get_hostname_srv_legacy.skip = "SKIP TEST AFTER HOSTPORT PATCH"
-MatrixFederationAgentTests.test_get_invalid_well_known.skip = "SKIP TEST AFTER HOSTPORT PATCH"
-MatrixFederationAgentTests.test_get_ipv6_address.skip = "SKIP TEST AFTER HOSTPORT PATCH"
-MatrixFederationAgentTests.test_get_no_srv_no_well_known.skip = "SKIP TEST AFTER HOSTPORT PATCH"
-MatrixFederationAgentTests.test_get_well_known.skip = "SKIP TEST AFTER HOSTPORT PATCH"
-MatrixFederationAgentTests.test_get_well_known_srv.skip = "SKIP TEST AFTER HOSTPORT PATCH"
-MatrixFederationAgentTests.test_get_well_known_redirect.skip = "SKIP TEST AFTER HOSTPORT PATCH"
-MatrixFederationAgentTests.test_get_well_known_srv_legacy.skip = "SKIP TEST AFTER HOSTPORT PATCH"
-MatrixFederationAgentTests.test_idna_servername.skip = "SKIP TEST AFTER HOSTPORT PATCH"
-MatrixFederationAgentTests.test_idna_srv_target.skip = "SKIP TEST AFTER HOSTPORT PATCH"
-MatrixFederationAgentTests.test_idna_srv_target_legacy.skip = "SKIP TEST AFTER HOSTPORT PATCH"
-MatrixFederationAgentTests.test_srv_fallbacks.skip = "SKIP TEST AFTER HOSTPORT PATCH"
-MatrixFederationAgentTests.test_srv_fallbacks_legacy.skip = "SKIP TEST AFTER HOSTPORT PATCH"
-
-# # -------------------------------------------------------------------------------------- #
 
