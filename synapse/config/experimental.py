@@ -617,3 +617,12 @@ class ExperimentalConfig(Config):
         # MSC4455: Preview URL capability
         # Tracked in: https://github.com/element-hq/synapse/issues/19719
         self.msc4452_enabled: bool = experimental.get("msc4452_enabled", False)
+
+        # Pre-MSC implementation of federated user search.
+        self.bwi_federated_user_dir_enabled: bool = experimental.get(
+            "bwi_federated_user_dir_enabled", False
+        )
+
+        self.bwi_federated_user_dir_federation_search_timeout: int = experimental.get(
+            "bwi_federated_user_dir_federation_search_timeout", 2000
+        )
