@@ -1477,7 +1477,27 @@ class FederationServer(FederationBase):
             dummy_user_id, search_term, limit
         )
 
-        return 200, results
+        # Federation endpoint: only return users local to this homeserver.
+        filtered_results = []
+        for user in results.get("results", []):
+            user_id = user.get("user_id")
+            if not isinstance(user_id, str):
+                continue
+
+            try:
+                if self.hs.is_mine_id(user_id):
+                    filtered_results.append(user)
+            except SynapseError:
+                # Ignore malformed user IDs in remote responses.
+                continue
+
+        # Keep output shape, and preserve "limited" if we had to trim.
+        limited = results.get("limited", False)
+        if len(filtered_results) > limit:
+            filtered_results = filtered_results[:limit]
+            limited = True
+
+        return 200, {"limited": limited, "results": filtered_results}
 
 
 class FederationHandlerRegistry:
