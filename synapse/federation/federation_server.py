@@ -1480,15 +1480,11 @@ class FederationServer(FederationBase):
         # Federation endpoint: only return users local to this homeserver.
         filtered_results = []
         for user in results.get("results", []):
-            user_id = user.get("user_id")
-            if not isinstance(user_id, str):
-                continue
-
             try:
-                if self.hs.is_mine_id(user_id):
+                if self.hs.is_mine_id(user["user_id"]):
                     filtered_results.append(user)
             except SynapseError:
-                # Ignore malformed user IDs in remote responses.
+                # Ignore malformed user IDs.
                 continue
 
         # Keep output shape, and preserve "limited" if we had to trim.

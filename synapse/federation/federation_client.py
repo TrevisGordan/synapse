@@ -42,6 +42,7 @@ from typing import (
 
 import attr
 from prometheus_client import Counter
+
 from twisted.internet import defer
 
 from synapse.api.constants import Direction, EventContentFields, EventTypes, Membership
