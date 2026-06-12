@@ -39,6 +39,7 @@
     - [Server Notices](server_notices.md)
     - [Consent Tracking](consent_tracking.md)
     - [User Directory](user_directory.md)
+    - [BWI Federated User Directory (experimental)](bwi_federated_user_directory.md)
     - [Message Retention Policies](message_retention_policies.md)
     - [Pluggable Modules](modules/index.md)
       - [Writing a module](modules/writing_a_module.md)
