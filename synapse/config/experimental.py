@@ -627,13 +627,6 @@ class ExperimentalConfig(Config):
             "bwi_federated_user_dir_federation_search_timeout", 2000
         )
 
-        # Search terms used by the periodic sync to discover remote users. The
-        # destinations themselves are taken from the `destinations` table, not
-        # from config.
-        self.bwi_federated_user_dir_sync_search_terms: list[str] = experimental.get(
-            "bwi_federated_user_dir_sync_search_terms", []
-        )
-
         self.bwi_federated_user_dir_sync_limit: int = experimental.get(
             "bwi_federated_user_dir_sync_limit", 50
         )
@@ -643,20 +636,6 @@ class ExperimentalConfig(Config):
         )
 
         if self.bwi_federated_user_dir_enabled:
-            if not self.bwi_federated_user_dir_sync_search_terms:
-                raise ConfigError(
-                    "experimental_features.bwi_federated_user_dir_sync_search_terms "
-                    "is required when bwi_federated_user_dir_enabled is true"
-                )
-
-            for search_term in self.bwi_federated_user_dir_sync_search_terms:
-                if not isinstance(search_term, str) or len(search_term) < 4:
-                    raise ConfigError(
-                        "Each entry in "
-                        "experimental_features.bwi_federated_user_dir_sync_search_terms "
-                        "must be a string of at least 4 characters"
-                    )
-
             if self.bwi_federated_user_dir_sync_limit < 1:
                 raise ConfigError(
                     "experimental_features.bwi_federated_user_dir_sync_limit must be "

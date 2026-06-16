@@ -857,17 +857,15 @@ class TransportLayerClient:
         self,
         requester: str,
         destination: str,
-        search_term: str,
         limit: int,
         timeout: int,
     ) -> JsonDict:
         """
-        Search for users in the user directory of a remote server.
+        Fetch users from the user directory of a remote server.
 
         Args:
-            requester: The user that initiated the search.
+            requester: The user that initiated the request.
             destination: The server to query.
-            search_term: The search term to look for.
             limit: Maximum number of results to return.
             timeout: timeout in milliseconds to get the response from destination.
 
@@ -878,7 +876,7 @@ class TransportLayerClient:
             FEDERATION_UNSTABLE_PREFIX,
             "/org.matrix.bwi_federated_user_dir" + "/user_directory/search",
         )
-        content = {"requester": requester, "search_term": search_term, "limit": limit}
+        content = {"requester": requester, "limit": limit}
         return await self.client.post_json(
             destination,
             path=path,

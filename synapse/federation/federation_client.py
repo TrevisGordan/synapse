@@ -1964,25 +1964,23 @@ class FederationClient(FederationBase):
         self,
         requester: str,
         destination: str,
-        search_term: str,
         timeout: int,
         limit: int = 10,
     ) -> JsonDict:
-        """Search for users in the user directory of a remote server.
+        """Fetch users from the user directory of a remote server.
 
         Args:
-            requester: The user that initiated the search.
+            requester: The user that initiated the request.
             destination: The server to query.
-            search_term: The search term to look for.
             limit: Maximum number of results to return.
             timeout: Timeout in milliseconds for the request.
 
         Returns:
-            The search results containing a list of users matching the search term.
+            The results containing a list of users from the remote directory.
         """
         try:
             response = await self.transport_layer.user_directory_search(
-                requester, destination, search_term, limit, timeout
+                requester, destination, limit, timeout
             )
             return response
         except Exception as e:
@@ -1998,19 +1996,17 @@ class FederationClient(FederationBase):
         self,
         requester: str,
         destinations: Collection[str],
-        search_term: str,
         limit: int = 10,
     ) -> JsonDict:
-        """Search for users across multiple federated servers.
+        """Fetch users from the directories of multiple federated servers.
 
         Args:
-            requester: The user that initiated the search.
+            requester: The user that initiated the request.
             destinations: The servers to query.
-            search_term: The search term to look for.
             limit: Maximum number of results to return per server.
 
         Returns:
-            Combined search results from all servers.
+            Combined results from all servers.
         """
 
         if not destinations:
@@ -2029,7 +2025,6 @@ class FederationClient(FederationBase):
                     self.user_directory_search(
                         requester,
                         destination,
-                        search_term,
                         self.user_directory_search_timeout,
                         limit,
                     )
@@ -2108,29 +2103,24 @@ class FederationClient(FederationBase):
             logger.debug("Federated user directory sync: no known destinations")
             return
 
-        search_terms = (
-            self.hs.config.experimental.bwi_federated_user_dir_sync_search_terms
-        )
         limit = self.hs.config.experimental.bwi_federated_user_dir_sync_limit
 
-        # De-duplicate by user id across destinations and search terms.
+        # De-duplicate by user id across destinations.
         entries_by_user: dict[str, RemoteUserDirectoryEntry] = {}
 
         for destination in destinations:
             if self._is_mine_server_name(destination):
                 continue
 
-            for search_term in search_terms:
-                response = await self.user_directory_search(
-                    self._federated_user_dir_sync_requester,
-                    destination,
-                    search_term,
-                    self.user_directory_search_timeout,
-                    limit,
-                )
+            response = await self.user_directory_search(
+                self._federated_user_dir_sync_requester,
+                destination,
+                self.user_directory_search_timeout,
+                limit,
+            )
 
-                for entry in self._parse_remote_user_directory_results(response):
-                    entries_by_user[entry.user_id] = entry
+            for entry in self._parse_remote_user_directory_results(response):
+                entries_by_user[entry.user_id] = entry
 
         if not entries_by_user:
             logger.debug("Federated user directory sync found no remote users")
