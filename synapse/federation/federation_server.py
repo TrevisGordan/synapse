@@ -92,6 +92,7 @@ from synapse.types import (
     JsonMapping,
     StateMap,
     UserID,
+    UserProfile,
     get_domain_from_id,
     get_localpart_from_id,
 )
@@ -1452,48 +1453,74 @@ class FederationServer(FederationBase):
             raise AuthError(code=403, msg="Server is banned from room")
 
     async def on_user_directory_search_request(
-        self, requester_id: str, origin: str, search_term: str, limit: int
+        self, requester_id: str, origin: str, limit: int
     ) -> tuple[int, JsonMapping]:
-        """Handle a search request from a remote server
+        """Handle a user directory request from a remote server.
+
+        Returns every searchable local user, since the federation endpoint
+        always syncs the full local directory rather than matching a term.
 
         Args:
-            origin: The server that sent the search request
-            search_term: The term to search for
-            limit: Maximum number of results to return
+            requester_id: The user ID of the requester on the origin server.
+            origin: The server that sent the request.
+            limit: Maximum number of results to return.
 
         Returns:
             A tuple of (response code, response json)
         """
-        # Get the user directory handler
+        return 200, await self._search_all_users(requester_id, origin, limit)
+
+    async def _search_all_users(
+        self, requester_id: str, origin: str, limit: int
+    ) -> JsonDict:
+        """Collect all searchable local users from the user directory.
+
+        The user directory search only returns matches for a given term, so to
+        approximate "all users" we issue a search for every alphanumeric prefix
+        and merge the de-duplicated, locally-owned results.
+
+        Args:
+            requester_id: The user ID of the requester on the origin server.
+            origin: The server that sent the search request.
+            limit: Maximum number of results to return.
+
+        Returns:
+            A dict of the form ``{"limited": <bool>, "results": [...]}``.
+        """
         user_directory_handler = self.hs.get_user_directory_handler()
 
-        # Use a dummy user_id built from the requester to perform the search
-        # This ensures we only return results that would be visible to users on that server
+        # Use a dummy user_id built from the requester to perform the search.
+        # This ensures we only return results visible to users on that server.
         localpart = get_localpart_from_id(requester_id)
         dummy_user_id = f"{localpart}:{origin}"
 
-        # Perform the search
-        results = await user_directory_handler.search_users(
-            dummy_user_id, search_term, limit
-        )
+        all_search_terms = [chr(c) for c in range(ord("a"), ord("z") + 1)] + [
+            str(d) for d in range(10)
+        ]
 
-        # Federation endpoint: only return users local to this homeserver.
-        filtered_results = []
-        for user in results.get("results", []):
-            try:
-                if self.hs.is_mine_id(user["user_id"]):
-                    filtered_results.append(user)
-            except SynapseError:
-                # Ignore malformed user IDs.
-                continue
+        # De-duplicate by user_id since a user can match multiple search terms.
+        collected: dict[str, UserProfile] = {}
+        for search_term in all_search_terms:
+            results = await user_directory_handler.search_users(
+                dummy_user_id, search_term, limit
+            )
+            for user in results.get("results", []):
+                try:
+                    if self.hs.is_mine_id(user["user_id"]):
+                        collected[user["user_id"]] = user
+                except SynapseError:
+                    # Ignore malformed user IDs.
+                    continue
 
-        # Keep output shape, and preserve "limited" if we had to trim.
-        limited = results.get("limited", False)
+        filtered_results = list(collected.values())
+
+        # Preserve "limited" if we had to trim down to the requested limit.
+        limited = False
         if len(filtered_results) > limit:
             filtered_results = filtered_results[:limit]
             limited = True
 
-        return 200, {"limited": limited, "results": filtered_results}
+        return {"limited": limited, "results": filtered_results}
 
 
 class FederationHandlerRegistry:
