@@ -1190,6 +1190,49 @@ class UserDirectoryStore(UserDirectoryBackgroundUpdateStore):
             ],
         }
 
+    async def get_users_in_user_dir(self) -> SearchResult:
+        """Get every user stored in the user directory.
+
+        Unlike :meth:`search_user_dir`, this does not match a search term: it
+        returns all profiles in the ``user_directory`` table. It is used by the
+        federation responder to hand a server's full local directory to a
+        remote homeserver.
+
+        Returns:
+            A ``SearchResult`` of the form::
+
+                {
+                    "limited": False,  # always False; no term/limit is applied
+                    "results": [
+                        {
+                            "user_id": <user_id>,
+                            "display_name": <display_name>,
+                            "avatar_url": <avatar_url>,
+                        }
+                    ]
+                }
+        """
+        rows = cast(
+            list[tuple[str, str | None, str | None]],
+            await self.db_pool.simple_select_list(
+                table="user_directory",
+                keyvalues=None,
+                retcols=("user_id", "display_name", "avatar_url"),
+                desc="get_users_in_user_dir",
+            ),
+        )
+
+        results: list[UserProfile] = [
+            {
+                "user_id": user_id,
+                "display_name": display_name,
+                "avatar_url": avatar_url,
+            }
+            for user_id, display_name, avatar_url in rows
+        ]
+
+        return {"limited": False, "results": results}
+
 
 def _filter_text_for_index(text: str) -> str:
     """Transforms text before it is inserted into the user directory index, or searched

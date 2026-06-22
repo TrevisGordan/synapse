@@ -256,8 +256,10 @@ Tests:
 
 The repo ships a 3-homeserver demo (`demo/start.sh`, ports 8080/8081/8082).
 
-1. Add the `experimental_features` block (section 4) to each
-   `demo/<port>/<port>.config`.
+1. `demo/start.sh` writes the `experimental_features` block (section 4) into
+   each freshly generated `demo/<port>/<port>.config` automatically. For an
+   existing demo config, add the block manually (or delete the config to let
+   `start.sh` regenerate it).
 2. Restart: `./demo/stop.sh && ./demo/start.sh --no-rate-limit`.
 3. Run the helper: `./demo/test_fed_user_dir_sync.sh`.
 

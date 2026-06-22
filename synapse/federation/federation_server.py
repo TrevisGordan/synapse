@@ -92,9 +92,7 @@ from synapse.types import (
     JsonMapping,
     StateMap,
     UserID,
-    UserProfile,
     get_domain_from_id,
-    get_localpart_from_id,
 )
 from synapse.util import unwrapFirstError
 from synapse.util.async_helpers import Linearizer, concurrently_execute, gather_results
@@ -1468,51 +1466,32 @@ class FederationServer(FederationBase):
         Returns:
             A tuple of (response code, response json)
         """
-        return 200, await self._search_all_users(requester_id, origin, limit)
+        return 200, await self._search_all_users(limit)
 
-    async def _search_all_users(
-        self, requester_id: str, origin: str, limit: int
-    ) -> JsonDict:
-        """Collect all searchable local users from the user directory.
+    async def _search_all_users(self, limit: int) -> JsonDict:
+        """Return all of this server's own users from the user directory.
 
-        The user directory search only returns matches for a given term, so to
-        approximate "all users" we issue a search for every alphanumeric prefix
-        and merge the de-duplicated, locally-owned results.
+        Reads the directory straight from the database and filters to locally
+        owned users, since the federation endpoint must only expose this
+        homeserver's own users (the table may also hold cached remote users).
 
         Args:
-            requester_id: The user ID of the requester on the origin server.
-            origin: The server that sent the search request.
             limit: Maximum number of results to return.
 
         Returns:
             A dict of the form ``{"limited": <bool>, "results": [...]}``.
         """
-        user_directory_handler = self.hs.get_user_directory_handler()
+        results = await self.store.get_users_in_user_dir()
 
-        # Use a dummy user_id built from the requester to perform the search.
-        # This ensures we only return results visible to users on that server.
-        localpart = get_localpart_from_id(requester_id)
-        dummy_user_id = f"{localpart}:{origin}"
-
-        all_search_terms = [chr(c) for c in range(ord("a"), ord("z") + 1)] + [
-            str(d) for d in range(10)
-        ]
-
-        # De-duplicate by user_id since a user can match multiple search terms.
-        collected: dict[str, UserProfile] = {}
-        for search_term in all_search_terms:
-            results = await user_directory_handler.search_users(
-                dummy_user_id, search_term, limit
-            )
-            for user in results.get("results", []):
-                try:
-                    if self.hs.is_mine_id(user["user_id"]):
-                        collected[user["user_id"]] = user
-                except SynapseError:
-                    # Ignore malformed user IDs.
-                    continue
-
-        filtered_results = list(collected.values())
+        # Federation endpoint: only return users local to this homeserver.
+        filtered_results = []
+        for user in results.get("results", []):
+            try:
+                if self.hs.is_mine_id(user["user_id"]):
+                    filtered_results.append(user)
+            except SynapseError:
+                # Ignore malformed user IDs.
+                continue
 
         # Preserve "limited" if we had to trim down to the requested limit.
         limited = False
