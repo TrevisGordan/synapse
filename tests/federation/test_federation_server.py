@@ -61,6 +61,11 @@ class FederationServerTests(unittest.FederatingHomeserverTestCase):
             "enabled": True,
             "search_all_users": True,
         }
+        # The federation user directory search responder is only registered when
+        # the experimental feature is enabled.
+        config["experimental_features"] = {
+            "bwi_federated_user_dir_enabled": True,
+        }
         return config
 
     @parameterized.expand([(b"",), (b"foo",), (b'{"limit": Infinity}',)])
@@ -111,7 +116,6 @@ class FederationServerTests(unittest.FederatingHomeserverTestCase):
             "/_matrix/federation/unstable/org.matrix.bwi_federated_user_dir/user_directory/search",
             content={
                 "requester": "@requester:other.example.com",
-                "search_term": "user",
                 "limit": 10,
             },
         )
@@ -127,7 +131,7 @@ class FederationServerTests(unittest.FederatingHomeserverTestCase):
         """Test that the federation user directory search servlet rejects invalid requests."""
         self.register_user("user", "password")
 
-        # Make a request with missing search_term
+        # Make a request with a missing requester
         channel = self.make_signed_federation_request(
             "POST",
             "/_matrix/federation/unstable/org.matrix.bwi_federated_user_dir/user_directory/search",
@@ -139,8 +143,8 @@ class FederationServerTests(unittest.FederatingHomeserverTestCase):
         self.assertEqual(channel.json_body["errcode"], "M_BAD_JSON")
 
     def test_federation_user_directory_search_servlet_no_results(self) -> None:
-        """Test that the federation user directory search servlet works correctly."""
-        self.register_user("user", "password")
+        """An empty local directory yields no results."""
+        # No local users are registered, so the directory is empty.
 
         # Make a request to the servlet
         channel = self.make_signed_federation_request(
@@ -148,7 +152,6 @@ class FederationServerTests(unittest.FederatingHomeserverTestCase):
             "/_matrix/federation/unstable/org.matrix.bwi_federated_user_dir/user_directory/search",
             content={
                 "requester": "@requester:other.example.com",
-                "search_term": "nonexistent",
                 "limit": 10,
             },
         )

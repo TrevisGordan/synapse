@@ -35,6 +35,7 @@ from synapse.server import HomeServer
 from synapse.types import JsonDict
 from synapse.util.clock import Clock
 
+from tests.storage.test_user_directory import GetUserDirectoryTables
 from tests.test_utils import FakeResponse, event_injection
 from tests.unittest import FederatingHomeserverTestCase
 
@@ -354,7 +355,7 @@ class FederationClientTest(FederatingHomeserverTestCase):
         # Call the federation client method
         result = self.get_success(
             self.federation_client.user_directory_search(
-                "@requester:example.com", "other.example.com", "test", 2000, 10
+                "@requester:example.com", "other.example.com", 2000, 10
             )
         )
 
@@ -363,7 +364,7 @@ class FederationClientTest(FederatingHomeserverTestCase):
 
         # Check that user_directory_search was called with the correct arguments
         self.transport_layer.user_directory_search.assert_called_once_with(
-            "@requester:example.com", "other.example.com", "test", 10, 2000
+            "@requester:example.com", "other.example.com", 10, 2000
         )
 
     def test_user_directory_search_endpoint_not_found(self) -> None:
@@ -378,7 +379,7 @@ class FederationClientTest(FederatingHomeserverTestCase):
         # Call the federation client method
         result = self.get_success(
             self.federation_client.user_directory_search(
-                "@requester:example.com", "other.example.com", "test", 10
+                "@requester:example.com", "other.example.com", 10
             )
         )
 
@@ -390,7 +391,7 @@ class FederationClientTest(FederatingHomeserverTestCase):
 
         # Mock the user_directory_search method to return different results for different servers
         async def mock_user_directory_search(
-            requester: str, destination: str, search_term: str, timeout: int, limit: int
+            requester: str, destination: str, timeout: int, limit: int
         ) -> JsonDict:
             if destination == "server1.example.com":
                 return {
@@ -426,7 +427,6 @@ class FederationClientTest(FederatingHomeserverTestCase):
             self.federation_client.search_user_directory_across_federation(
                 "@requester:example.com",
                 ["server1.example.com", "server2.example.com"],
-                "test",
                 10,
             )
         )
@@ -456,7 +456,7 @@ class FederationClientTest(FederatingHomeserverTestCase):
 
         # Mock the user_directory_search method to return many results
         async def mock_user_directory_search(
-            requester: str, destination: str, search_term: str, timeout: int, limit: int
+            requester: str, destination: str, timeout: int, limit: int
         ) -> JsonDict:
             return {
                 "limited": False,
@@ -479,7 +479,6 @@ class FederationClientTest(FederatingHomeserverTestCase):
             self.federation_client.search_user_directory_across_federation(
                 "@requester:example.com",
                 ["server1.example.com", "server2.example.com"],
-                "test",
                 5,
             )
         )
@@ -493,7 +492,7 @@ class FederationClientTest(FederatingHomeserverTestCase):
         # Call the federation client method with an empty destination list
         result = self.get_success(
             self.federation_client.search_user_directory_across_federation(
-                "@requester:example.com", [], "test", 10
+                "@requester:example.com", [], 10
             )
         )
 
@@ -511,10 +510,80 @@ class FederationClientTest(FederatingHomeserverTestCase):
             self.federation_client.search_user_directory_across_federation(
                 "@requester:example.com",
                 ["server1.example.com", "server2.example.com"],
-                "test",
                 10,
             )
         )
 
         # Check that the result is an empty result set
         self.assertEqual(result, {"limited": False, "results": []})
+
+
+class FederatedUserDirectorySyncTestCase(FederatingHomeserverTestCase):
+    """Tests the federation-side periodic user directory sync background job."""
+
+    servlets = [
+        admin.register_servlets,
+        login.register_servlets,
+        register.register_servlets,
+        user_directory.register_servlets,
+    ]
+
+    def make_homeserver(self, reactor: MemoryReactor, clock: Clock) -> HomeServer:
+        config = self.default_config()
+        # Enable writing to the user directory on this process.
+        config["update_user_directory_from_worker"] = None
+        config["user_directory"] = {"enabled": True, "search_all_users": True}
+        config["experimental_features"] = {
+            "bwi_federated_user_dir_enabled": True,
+        }
+        return self.setup_test_homeserver(config=config)
+
+    def prepare(
+        self, reactor: MemoryReactor, clock: Clock, homeserver: HomeServer
+    ) -> None:
+        self.store = homeserver.get_datastores().main
+        self.federation_client = homeserver.get_federation_client()
+        self.user_dir_helper = GetUserDirectoryTables(self.store)
+
+    def test_sync_uses_db_destinations_and_upserts_remote_users(self) -> None:
+        # Record a known destination in the DB.
+        self.get_success(
+            self.store.set_destination_retry_timings("remote.example.com", None, 0, 0)
+        )
+
+        self.federation_client.user_directory_search = AsyncMock(  # type: ignore[method-assign]
+            return_value={
+                "limited": False,
+                "results": [
+                    {
+                        "user_id": "@bob:remote.example.com",
+                        "display_name": "Bob Remote",
+                        "avatar_url": None,
+                    }
+                ],
+            }
+        )
+
+        self.get_success(self.federation_client._sync_federated_user_directory())
+
+        self.federation_client.user_directory_search.assert_called_once_with(
+            "@_user_directory_sync:test",
+            "remote.example.com",
+            self.hs.config.experimental.bwi_federated_user_dir_federation_search_timeout,
+            self.hs.config.experimental.bwi_federated_user_dir_sync_limit,
+        )
+
+        profiles = self.get_success(
+            self.user_dir_helper.get_profiles_in_user_directory()
+        )
+        self.assertIn("@bob:remote.example.com", profiles)
+
+    def test_sync_skips_own_server(self) -> None:
+        # Our own server name should never be queried, even if present in the DB.
+        self.get_success(self.store.set_destination_retry_timings("test", None, 0, 0))
+
+        self.federation_client.user_directory_search = AsyncMock()  # type: ignore[method-assign]
+
+        self.get_success(self.federation_client._sync_federated_user_directory())
+
+        self.federation_client.user_directory_search.assert_not_called()
