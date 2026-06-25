@@ -89,7 +89,7 @@ Each run:
    are **not** configured; they come from the DB.
 2. Skips our own server (`_is_mine_server_name`).
 3. For every destination, calls
-   `user_directory_search(requester, destination, timeout, limit)`, which fetches
+   `user_directory_search(requester, destination, timeout)`, which fetches
    the remote server's full local directory. The synthetic requester is
    `@_user_directory_sync:<our_server_name>` (the remote endpoint requires the
    requester to belong to the origin server).
@@ -166,15 +166,15 @@ POST /_matrix/federation/unstable/org.matrix.bwi_federated_user_dir/user_directo
 Request body:
 
 ```json
-{ "requester": "@user:origin.example", "limit": 10 }
+{ "requester": "@user:origin.example" }
 ```
 
 Server behaviour (`FederationServer.on_user_directory_search_request`):
 
 - Requires `requester` to belong to the calling `origin` (else `400`).
-- `limit` is clamped to `[0, 50]`.
 - Returns **all** of this server's own searchable users (`is_mine_id`); the
-  endpoint always syncs the full local directory rather than matching a term.
+  endpoint always syncs the full local directory rather than matching a term or
+  applying a result limit.
 
 ## 4. Configuration reference
 
@@ -183,7 +183,6 @@ All keys are under `experimental_features`:
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
 | `bwi_federated_user_dir_enabled` | bool | `false` | Master switch. Does **two** things: (a) schedules the periodic sync job (on the background-tasks worker, the *consumer* role), and (b) exposes the federation responder endpoint so other servers can query this server's users (the *source* role). A server that leaves this off is neither queried nor queries others. |
-| `bwi_federated_user_dir_sync_limit` | int | `50` | Max results requested per destination. Must be `≥ 1`. |
 | `bwi_federated_user_dir_sync_interval` | duration | `"4h"` | How often the sync runs (e.g. `"30s"`, `"15m"`, `"4h"`). Parsed to ms; must be positive. |
 | `bwi_federated_user_dir_federation_search_timeout` | int (ms) | `2000` | Per-request federation timeout for the outgoing search. |
 
@@ -197,12 +196,11 @@ All keys are under `experimental_features`:
 experimental_features:
   bwi_federated_user_dir_enabled: true
   bwi_federated_user_dir_sync_interval: "30s"
-  bwi_federated_user_dir_sync_limit: 50
   bwi_federated_user_dir_federation_search_timeout: 5000
 ```
 
 Validation happens at startup in `synapse/config/experimental.py`; a misconfig
-(e.g. enabled with a non-positive interval or limit) raises a
+(e.g. enabled with a non-positive interval) raises a
 `ConfigError` and the server refuses to start.
 
 ## 5. Operational notes
@@ -278,7 +276,7 @@ use `demo/fed_user_directory_search.py`.
   remote user is removed/renamed on the source server; they are refreshed on the
   next sync but stale users are not deleted. (Future work.)
 - **Discovery pulls the full remote directory.** Each sync fetches all of a
-  remote server's searchable local users (subject to `..._sync_limit`), rather
-  than matching configured search terms.
+  remote server's searchable local users (no result limit), rather than matching
+  configured search terms.
 - **Destinations come from the DB**, so a server only syncs from homeservers it
   already knows about.

@@ -116,7 +116,6 @@ class FederationServerTests(unittest.FederatingHomeserverTestCase):
             "/_matrix/federation/unstable/org.matrix.bwi_federated_user_dir/user_directory/search",
             content={
                 "requester": "@requester:other.example.com",
-                "limit": 10,
             },
         )
 
@@ -135,7 +134,7 @@ class FederationServerTests(unittest.FederatingHomeserverTestCase):
         channel = self.make_signed_federation_request(
             "POST",
             "/_matrix/federation/unstable/org.matrix.bwi_federated_user_dir/user_directory/search",
-            content={"limit": 10},
+            content={},
         )
 
         # Check that the response is an error
@@ -152,7 +151,6 @@ class FederationServerTests(unittest.FederatingHomeserverTestCase):
             "/_matrix/federation/unstable/org.matrix.bwi_federated_user_dir/user_directory/search",
             content={
                 "requester": "@requester:other.example.com",
-                "limit": 10,
             },
         )
 

@@ -355,7 +355,7 @@ class FederationClientTest(FederatingHomeserverTestCase):
         # Call the federation client method
         result = self.get_success(
             self.federation_client.user_directory_search(
-                "@requester:example.com", "other.example.com", 2000, 10
+                "@requester:example.com", "other.example.com", 2000
             )
         )
 
@@ -364,7 +364,7 @@ class FederationClientTest(FederatingHomeserverTestCase):
 
         # Check that user_directory_search was called with the correct arguments
         self.transport_layer.user_directory_search.assert_called_once_with(
-            "@requester:example.com", "other.example.com", 10, 2000
+            "@requester:example.com", "other.example.com", 2000
         )
 
     def test_user_directory_search_endpoint_not_found(self) -> None:
@@ -391,7 +391,7 @@ class FederationClientTest(FederatingHomeserverTestCase):
 
         # Mock the user_directory_search method to return different results for different servers
         async def mock_user_directory_search(
-            requester: str, destination: str, timeout: int, limit: int
+            requester: str, destination: str, timeout: int
         ) -> JsonDict:
             if destination == "server1.example.com":
                 return {
@@ -456,7 +456,7 @@ class FederationClientTest(FederatingHomeserverTestCase):
 
         # Mock the user_directory_search method to return many results
         async def mock_user_directory_search(
-            requester: str, destination: str, timeout: int, limit: int
+            requester: str, destination: str, timeout: int
         ) -> JsonDict:
             return {
                 "limited": False,
@@ -570,7 +570,6 @@ class FederatedUserDirectorySyncTestCase(FederatingHomeserverTestCase):
             "@_user_directory_sync:test",
             "remote.example.com",
             self.hs.config.experimental.bwi_federated_user_dir_federation_search_timeout,
-            self.hs.config.experimental.bwi_federated_user_dir_sync_limit,
         )
 
         profiles = self.get_success(
