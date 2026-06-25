@@ -627,21 +627,11 @@ class ExperimentalConfig(Config):
             "bwi_federated_user_dir_federation_search_timeout", 2000
         )
 
-        self.bwi_federated_user_dir_sync_limit: int = experimental.get(
-            "bwi_federated_user_dir_sync_limit", 50
-        )
-
         self.bwi_federated_user_dir_sync_interval_ms: int = self.parse_duration(
             experimental.get("bwi_federated_user_dir_sync_interval", "4h")
         )
 
         if self.bwi_federated_user_dir_enabled:
-            if self.bwi_federated_user_dir_sync_limit < 1:
-                raise ConfigError(
-                    "experimental_features.bwi_federated_user_dir_sync_limit must be "
-                    "at least 1"
-                )
-
             if self.bwi_federated_user_dir_sync_interval_ms < 1:
                 raise ConfigError(
                     "experimental_features.bwi_federated_user_dir_sync_interval must "

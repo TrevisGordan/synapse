@@ -857,16 +857,17 @@ class TransportLayerClient:
         self,
         requester: str,
         destination: str,
-        limit: int,
         timeout: int,
     ) -> JsonDict:
         """
         Fetch users from the user directory of a remote server.
 
+        The federation endpoint always returns the remote server's full local
+        directory.
+
         Args:
             requester: The user that initiated the request.
             destination: The server to query.
-            limit: Maximum number of results to return.
             timeout: timeout in milliseconds to get the response from destination.
 
         Returns:
@@ -876,7 +877,7 @@ class TransportLayerClient:
             FEDERATION_UNSTABLE_PREFIX,
             "/org.matrix.bwi_federated_user_dir" + "/user_directory/search",
         )
-        content = {"requester": requester, "limit": limit}
+        content = {"requester": requester}
         return await self.client.post_json(
             destination,
             path=path,

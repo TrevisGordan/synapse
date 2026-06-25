@@ -1451,7 +1451,7 @@ class FederationServer(FederationBase):
             raise AuthError(code=403, msg="Server is banned from room")
 
     async def on_user_directory_search_request(
-        self, requester_id: str, origin: str, limit: int
+        self, requester_id: str, origin: str
     ) -> tuple[int, JsonMapping]:
         """Handle a user directory request from a remote server.
 
@@ -1461,25 +1461,21 @@ class FederationServer(FederationBase):
         Args:
             requester_id: The user ID of the requester on the origin server.
             origin: The server that sent the request.
-            limit: Maximum number of results to return.
 
         Returns:
             A tuple of (response code, response json)
         """
-        return 200, await self._search_all_users(limit)
+        return 200, await self._search_all_users()
 
-    async def _search_all_users(self, limit: int) -> JsonDict:
+    async def _search_all_users(self) -> JsonDict:
         """Return all of this server's own users from the user directory.
 
         Reads the directory straight from the database and filters to locally
         owned users, since the federation endpoint must only expose this
         homeserver's own users (the table may also hold cached remote users).
 
-        Args:
-            limit: Maximum number of results to return.
-
         Returns:
-            A dict of the form ``{"limited": <bool>, "results": [...]}``.
+            A dict of the form ``{"limited": False, "results": [...]}``.
         """
         results = await self.store.get_users_in_user_dir()
 
@@ -1493,13 +1489,9 @@ class FederationServer(FederationBase):
                 # Ignore malformed user IDs.
                 continue
 
-        # Preserve "limited" if we had to trim down to the requested limit.
-        limited = False
-        if len(filtered_results) > limit:
-            filtered_results = filtered_results[:limit]
-            limited = True
-
-        return {"limited": limited, "results": filtered_results}
+        # The federation endpoint never truncates: it always returns the full
+        # local directory.
+        return {"limited": False, "results": filtered_results}
 
 
 class FederationHandlerRegistry:

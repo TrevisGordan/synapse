@@ -899,8 +899,7 @@ class FederationUserDirectorySearchServlet(BaseFederationServerServlet):
     POST /_matrix/federation/v3/user_directory/search
     Request:
     {
-        "requester": "@user:example.com",
-        "limit": 10
+        "requester": "@user:example.com"
     }
     Response:
     {
@@ -927,15 +926,7 @@ class FederationUserDirectorySearchServlet(BaseFederationServerServlet):
         if requester is None or get_domain_from_id(requester) != origin:
             raise SynapseError(400, "Missing or invalid requester", Codes.BAD_JSON)
 
-        limit = content.get("limit", 10)
-        if not isinstance(limit, int):
-            raise SynapseError(400, "Invalid limit", Codes.BAD_JSON)
-
-        limit = max(min(limit, 50), 0)  # Clamp limit between 0 and 50
-
-        return await self.handler.on_user_directory_search_request(
-            requester, origin, limit
-        )
+        return await self.handler.on_user_directory_search_request(requester, origin)
 
 
 FEDERATION_SERVLET_CLASSES: tuple[type[BaseFederationServlet], ...] = (

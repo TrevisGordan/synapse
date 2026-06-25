@@ -1965,14 +1965,15 @@ class FederationClient(FederationBase):
         requester: str,
         destination: str,
         timeout: int,
-        limit: int = 10,
     ) -> JsonDict:
         """Fetch users from the user directory of a remote server.
+
+        The federation endpoint always returns the remote server's full local
+        directory, so no result limit is sent.
 
         Args:
             requester: The user that initiated the request.
             destination: The server to query.
-            limit: Maximum number of results to return.
             timeout: Timeout in milliseconds for the request.
 
         Returns:
@@ -1980,7 +1981,7 @@ class FederationClient(FederationBase):
         """
         try:
             response = await self.transport_layer.user_directory_search(
-                requester, destination, limit, timeout
+                requester, destination, timeout
             )
             return response
         except Exception as e:
@@ -2026,7 +2027,6 @@ class FederationClient(FederationBase):
                         requester,
                         destination,
                         self.user_directory_search_timeout,
-                        limit,
                     )
                 )
                 query_tasks.append(deferred)
@@ -2103,8 +2103,6 @@ class FederationClient(FederationBase):
             logger.debug("Federated user directory sync: no known destinations")
             return
 
-        limit = self.hs.config.experimental.bwi_federated_user_dir_sync_limit
-
         # De-duplicate by user id across destinations.
         entries_by_user: dict[str, RemoteUserDirectoryEntry] = {}
 
@@ -2116,7 +2114,6 @@ class FederationClient(FederationBase):
                 self._federated_user_dir_sync_requester,
                 destination,
                 self.user_directory_search_timeout,
-                limit,
             )
 
             for entry in self._parse_remote_user_directory_results(response):
